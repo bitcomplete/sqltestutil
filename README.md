@@ -1,5 +1,7 @@
 # sqltestutil
 
+[![Documentation](https://godoc.org/github.com/bitcomplete/sqltestutil?status.svg)](http://godoc.org/github.com/bitcomplete/sqltestutil)
+
 Utilities for testing Golang code that runs SQL.
 
 ## Usage
