@@ -72,14 +72,23 @@ func StartPostgresContainer(ctx context.Context, version string) (*PostgresConta
 	}
 	defer cli.Close()
 	image := "postgres:" + version
-	pullReader, err := cli.ImagePull(ctx, image, types.ImagePullOptions{})
+	_, _, err = cli.ImageInspectWithRaw(ctx, image)
 	if err != nil {
-		return nil, err
-	}
-	_, err = io.Copy(io.Discard, pullReader)
-	pullReader.Close()
-	if err != nil {
-		return nil, err
+		_, notFound := err.(interface {
+			NotFound()
+		})
+		if !notFound {
+			return nil, err
+		}
+		pullReader, err := cli.ImagePull(ctx, image, types.ImagePullOptions{})
+		if err != nil {
+			return nil, err
+		}
+		_, err = io.Copy(io.Discard, pullReader)
+		pullReader.Close()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	password, err := randomPassword()
