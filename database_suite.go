@@ -60,14 +60,12 @@ func (s *Suite) DB() *sqlx.DB {
 
 // Tx returns the transaction for the current test.
 func (s *Suite) Tx() *sqlx.Tx {
+	if s.tx == nil {
+		var err error
+		s.tx, err = s.db.BeginTxx(s.Context, nil)
+		s.Require().NoError(err)
+	}
 	return s.tx
-}
-
-func (s *Suite) SetupTest() {
-	s.Require().Nil(s.tx)
-	var err error
-	s.tx, err = s.db.BeginTxx(s.Context, nil)
-	s.Require().NoError(err)
 }
 
 func (s *Suite) TearDownTest() {
@@ -84,7 +82,7 @@ func (s *Suite) SetupSuite() {
 	s.db = db
 }
 
-func (s *Suite) TeardownSuite() {
+func (s *Suite) TearDownSuite() {
 	if err := s.db.Close(); err != nil {
 		fmt.Println("error in database close:", err)
 	}
