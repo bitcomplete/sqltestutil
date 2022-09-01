@@ -18,13 +18,25 @@ import (
 //
 // Note that this function does not check whether the migration has already been
 // run. Its primary purpose is to initialize a test database.
-func RunMigrations(ctx context.Context, db driver.ExecerContext, migrationDir string) error {
+func RunMigrations(ctx context.Context, db driver.ExecerContext, migrationDir string, files ...string) error {
 	filenames, err := filepath.Glob(filepath.Join(migrationDir, "*.up.sql"))
 	if err != nil {
 		return err
 	}
+	var filter map[string]struct{} = nil
+	if len(files) > 0 {
+		filter = make(map[string]struct{})
+		for i := range files {
+			filter[files[i]] = struct{}{}
+		}
+	}
 	sort.Strings(filenames)
 	for _, filename := range filenames {
+		if len(files) > 0 {
+			if _, exist := filter[filename]; !exist {
+				continue
+			}
+		}
 		data, err := ioutil.ReadFile(filename)
 		if err != nil {
 			return err
