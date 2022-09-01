@@ -33,7 +33,7 @@ func RunMigrations(ctx context.Context, db driver.ExecerContext, migrationDir st
 	sort.Strings(filenames)
 	for _, filename := range filenames {
 		if len(files) > 0 {
-			if _, exist := filter[filename]; !exist {
+			if _, exist := filter[filepath.Base(filename)]; !exist {
 				continue
 			}
 		}
