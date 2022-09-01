@@ -21,7 +21,10 @@ import (
 type PostgresContainer struct {
 	id       string
 	password string
+	user     string
 	port     string
+	dbName   string
+	version  string
 }
 
 // StartPostgresContainer starts a new Postgres Docker container. The version
@@ -58,20 +61,55 @@ type PostgresContainer struct {
 //     }
 //
 //     func TestExampleTestSuite(t *testing.T) {
-//         pg, _ := sqltestutil.StartPostgresContainer(context.Background(), "12")
+//         pg, _ := sqltestutil.StartPostgresContainer(context.Background(), WithVersion("12"))
 //         defer pg.Shutdown(ctx)
 //         suite.Run(t, &ExampleTestSuite{})
 //     }
 //
 // [1]: https://github.com/golang/go/issues/37206
 // [2]: https://github.com/stretchr/testify
-func StartPostgresContainer(ctx context.Context, version string) (*PostgresContainer, error) {
+func StartPostgresContainer(ctx context.Context, options ...Option) (*PostgresContainer, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
 		panic(err)
 	}
 	defer cli.Close()
-	image := "postgres:" + version
+
+	containerObj := &PostgresContainer{}
+	//
+	// apply options, if any.
+	//
+	for i := range options {
+		options[i](containerObj)
+	}
+	//
+	// set default values
+	//
+	if len(containerObj.password) == 0 {
+		password, err := randomPassword()
+		if err != nil {
+			return nil, err
+		}
+		containerObj.password = password
+	}
+	if len(containerObj.port) == 0 {
+		port, err := randomPort()
+		if err != nil {
+			return nil, err
+		}
+		containerObj.port = port
+	}
+	if len(containerObj.user) == 0 {
+		containerObj.user = "pgtest"
+	}
+	if len(containerObj.dbName) == 0 {
+		containerObj.user = "pgtest"
+	}
+	if len(containerObj.version) == 0 {
+		containerObj.version = "12"
+	}
+
+	image := "postgres:" + containerObj.version
 	_, _, err = cli.ImageInspectWithRaw(ctx, image)
 	if err != nil {
 		_, notFound := err.(interface {
@@ -91,20 +129,12 @@ func StartPostgresContainer(ctx context.Context, version string) (*PostgresConta
 		}
 	}
 
-	password, err := randomPassword()
-	if err != nil {
-		return nil, err
-	}
-	port, err := randomPort()
-	if err != nil {
-		return nil, err
-	}
 	createResp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: image,
 		Env: []string{
-			"POSTGRES_DB=pgtest",
-			"POSTGRES_PASSWORD=" + password,
-			"POSTGRES_USER=pgtest",
+			"POSTGRES_DB=" + containerObj.dbName,
+			"POSTGRES_PASSWORD=" + containerObj.password,
+			"POSTGRES_USER=" + containerObj.user,
 		},
 		Healthcheck: &container.HealthConfig{
 			Test:     []string{"CMD-SHELL", "pg_isready -U pgtest"},
@@ -115,7 +145,7 @@ func StartPostgresContainer(ctx context.Context, version string) (*PostgresConta
 	}, &container.HostConfig{
 		PortBindings: nat.PortMap{
 			"5432/tcp": []nat.PortBinding{
-				{HostPort: port},
+				{HostPort: containerObj.port},
 			},
 		},
 	}, nil, nil, "")
@@ -160,17 +190,15 @@ HealthCheck:
 			time.Sleep(500 * time.Millisecond)
 		}
 	}
-	return &PostgresContainer{
-		id:       createResp.ID,
-		password: password,
-		port:     port,
-	}, nil
+	containerObj.id = createResp.ID
+
+	return containerObj, nil
 }
 
 // ConnectionString returns a connection URL string that can be used to connect
 // to the running Postgres container.
 func (c *PostgresContainer) ConnectionString() string {
-	return fmt.Sprintf("postgres://pgtest:%s@127.0.0.1:%s/pgtest", c.password, c.port)
+	return fmt.Sprintf("postgres://%s:%s@127.0.0.1:%s/%s", c.user, c.password, c.port, c.dbName)
 }
 
 // Shutdown cleans up the Postgres container by stopping and removing it. This
