@@ -2,11 +2,10 @@ package sqltestutil
 
 import (
 	"context"
+	"database/sql/driver"
 	"io/ioutil"
 	"path/filepath"
 	"sort"
-
-	"github.com/jmoiron/sqlx"
 )
 
 // RunMigrations reads all of the files matching *.up.sql in migrationDir and
@@ -19,7 +18,7 @@ import (
 //
 // Note that this function does not check whether the migration has already been
 // run. Its primary purpose is to initialize a test database.
-func RunMigrations(ctx context.Context, db sqlx.ExecerContext, migrationDir string) error {
+func RunMigrations(ctx context.Context, db driver.ExecerContext, migrationDir string) error {
 	filenames, err := filepath.Glob(filepath.Join(migrationDir, "*.up.sql"))
 	if err != nil {
 		return err
@@ -30,7 +29,7 @@ func RunMigrations(ctx context.Context, db sqlx.ExecerContext, migrationDir stri
 		if err != nil {
 			return err
 		}
-		_, err = db.ExecContext(ctx, string(data))
+		_, err = db.ExecContext(ctx, string(data), nil)
 		if err != nil {
 			return err
 		}
