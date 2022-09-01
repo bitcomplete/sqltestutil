@@ -160,7 +160,7 @@ func StartPostgresContainer(ctx context.Context, options ...Option) (*PostgresCo
 				{HostPort: containerObj.port},
 			},
 		},
-	}, nil, nil, "sqltestutil")
+	}, nil, nil, containerObj.containerName)
 	if err != nil {
 		return nil, err
 	}
