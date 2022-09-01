@@ -37,3 +37,11 @@ func WithVersion(version string) Option {
 		container.version = version
 	}
 }
+func WithDBName(dbName string) Option {
+	return func(container *PostgresContainer) {
+		if len(dbName) == 0 {
+			panic("sqltestutil: dbName option can not be empty")
+		}
+		container.dbName = dbName
+	}
+}
