@@ -45,3 +45,11 @@ func WithDBName(dbName string) Option {
 		container.dbName = dbName
 	}
 }
+func WithContainerName(containerName string) Option {
+	return func(container *PostgresContainer) {
+		if len(containerName) == 0 {
+			panic("sqltestutil: containerName option can not be empty")
+		}
+		container.containerName = containerName
+	}
+}

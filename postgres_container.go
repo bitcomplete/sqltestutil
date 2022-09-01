@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"github.com/docker/docker/api/types/filters"
 	"io"
 	"math/big"
 	"net"
@@ -19,12 +20,13 @@ import (
 // PostgresContainer is a Docker container running Postgres. It can be used to
 // cheaply start a throwaway Postgres instance for testing.
 type PostgresContainer struct {
-	id       string
-	password string
-	user     string
-	port     string
-	dbName   string
-	version  string
+	id            string
+	password      string
+	user          string
+	port          string
+	dbName        string
+	version       string
+	containerName string
 }
 
 // StartPostgresContainer starts a new Postgres Docker container. The version
@@ -103,10 +105,20 @@ func StartPostgresContainer(ctx context.Context, options ...Option) (*PostgresCo
 		containerObj.user = "pgtest"
 	}
 	if len(containerObj.dbName) == 0 {
-		containerObj.user = "pgtest"
+		containerObj.dbName = "pgtest"
 	}
 	if len(containerObj.version) == 0 {
 		containerObj.version = "12"
+	}
+	if len(containerObj.containerName) == 0 {
+		containerObj.containerName = "sqltestutil"
+	}
+	//
+	// remove leaked containers
+	//
+	err = containerObj.fixContainerLeak(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	image := "postgres:" + containerObj.version
@@ -148,7 +160,7 @@ func StartPostgresContainer(ctx context.Context, options ...Option) (*PostgresCo
 				{HostPort: containerObj.port},
 			},
 		},
-	}, nil, nil, "")
+	}, nil, nil, "sqltestutil")
 	if err != nil {
 		return nil, err
 	}
@@ -193,6 +205,29 @@ HealthCheck:
 	containerObj.id = createResp.ID
 
 	return containerObj, nil
+}
+func (c *PostgresContainer) fixContainerLeak(ctx context.Context) error {
+	cli, err := client.NewClientWithOpts(client.FromEnv)
+	if err != nil {
+		return err
+	}
+	defer cli.Close()
+
+	data, err := cli.ContainerList(ctx, types.ContainerListOptions{All: true, Filters: filters.NewArgs(filters.Arg("name", c.containerName))})
+	if err != nil {
+		return err
+	}
+	for i := range data {
+		err = cli.ContainerStop(ctx, data[i].ID, nil)
+		if err != nil {
+			return err
+		}
+		err = cli.ContainerRemove(ctx, data[i].ID, types.ContainerRemoveOptions{})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ConnectionString returns a connection URL string that can be used to connect
