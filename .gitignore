@@ -1,0 +1,29 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# IDE
+.idea/
+.idea
+
+# Mac
+.DS_Store
+*/.DS_Store
+!sqldialects.xml
+
+# Dependencies
+vendor
+
+# local files
+/tmp
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+out/*
+.editorconfig
