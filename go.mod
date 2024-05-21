@@ -1,4 +1,4 @@
-module github.com/bitcomplete/sqltestutil
+module github.com/mohammad-ahmadi-de/sqltestutil
 
 go 1.18
 
