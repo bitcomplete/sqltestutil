@@ -137,7 +137,7 @@ func StartPostgresContainer(ctx context.Context, version string) (*PostgresConta
 	}
 	defer func() {
 		if err != nil {
-			stopErr := cli.ContainerStop(ctx, createResp.ID, nil)
+			stopErr := cli.ContainerStop(ctx, createResp.ID, container.StopOptions{})
 			if stopErr != nil {
 				fmt.Println("error stopping container:", stopErr)
 				return
@@ -182,7 +182,7 @@ func (c *PostgresContainer) Shutdown(ctx context.Context) error {
 		return err
 	}
 	defer cli.Close()
-	err = cli.ContainerStop(ctx, c.id, nil)
+	err = cli.ContainerStop(ctx, c.id, container.StopOptions{})
 	if err != nil {
 		return err
 	}
